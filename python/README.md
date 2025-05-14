@@ -6,7 +6,7 @@ This repository contains a collection of AI agents built with different framewor
 
 ### LangGraph Currency Agent
 
-**Location:** `/python/agents/langgraph`
+**Location:** `/python/agents/currency_converter`
 
 A currency conversion agent built with LangGraph that provides real-time exchange rate information through the A2A protocol.
 
