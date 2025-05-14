@@ -17,7 +17,7 @@ This agent uses LangGraph with OpenAI to provide comprehensive analytical servic
 1. Navigate to the samples directory:
 
    ```bash
-   cd ai-run-demo-agents/python/agents/langgraph
+   cd ai-run-demo-agents/python/agents/fun-with-rick
    ```
 
 2. Create an environment file with your API key:
