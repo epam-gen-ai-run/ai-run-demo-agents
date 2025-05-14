@@ -5,11 +5,12 @@ from typing import Any, Literal
 
 from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.tools import tool
-from langchain_openai import ChatOpenAI
 from pydantic import BaseModel
 
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.prebuilt import create_react_agent
+
+from common.utils.chat_model_factory import create_chat_model
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -73,7 +74,7 @@ Other Instructions:
 """
 
     def __init__(self):
-        self.model = ChatOpenAI(model='gpt-4o')
+        self.model = create_chat_model()
         self.tools = [get_company_info, get_company_news, get_company_history, get_company_financials]
 
         self.graph = create_react_agent(
