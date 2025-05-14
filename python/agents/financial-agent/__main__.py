@@ -14,7 +14,7 @@ from common.types import (
 )
 from common.utils.push_notification_auth import PushNotificationSenderAuth
 from dotenv import load_dotenv
-
+from pyngrok import ngrok
 
 load_dotenv()
 
@@ -28,10 +28,8 @@ logger = logging.getLogger(__name__)
 def main(host, port):
     """Starts the Financial Agent server."""
     try:
-        if not os.getenv('OPENAI_API_KEY'):
-            raise MissingAPIKeyError(
-                'OPENAI_API_KEY environment variable not set.'
-            )
+        ngrok_url = ngrok.connect(port)
+        logger.info(f'ngrok tunnel "{ngrok_url.public_url}" -> "http://{host}:{port}"')
 
         capabilities = AgentCapabilities(streaming=True, pushNotifications=True)
         skill = AgentSkill(
@@ -44,7 +42,7 @@ def main(host, port):
         agent_card = AgentCard(
             name="Financial Agent",
             description="Helps to search and analyze financial market data",
-            url=f'http://{host}:{port}/',
+            url=ngrok_url.public_url,
             version='1.0.0',
             defaultInputModes=FinancialAgent.SUPPORTED_CONTENT_TYPES,
             defaultOutputModes=FinancialAgent.SUPPORTED_CONTENT_TYPES,
