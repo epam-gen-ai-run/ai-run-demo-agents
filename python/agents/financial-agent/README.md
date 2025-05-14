@@ -1,10 +1,10 @@
-# LangGraph FunWithRick Agent with A2A Protocol
+# LangGraph Financial Agent with A2A Protocol
 
 This sample demonstrates an agent built with [LangGraph](https://langchain-ai.github.io/langgraph/) and exposed through the A2A protocol. It showcases conversational interactions with support for multi-turn dialogue and streaming responses.
 
 ## How It Works
 
-This agent uses LangGraph with OpenAI to provide comprehensive analytical services covering Rick and Morty's canonical lore, character psychology, episode breakdowns, and philosophical deconstructions of the show's narrative multiverse, backed by rigorous academic research and deep existential insight. The A2A protocol enables standardized interaction with the agent, allowing clients to send requests and receive real-time updates.
+This agent uses LangGraph with OpenAI to help to search and analyze financial market data. The A2A protocol enables standardized interaction with the agent, allowing clients to send requests and receive real-time updates.
 
 ## Prerequisites
 
@@ -17,7 +17,7 @@ This agent uses LangGraph with OpenAI to provide comprehensive analytical servic
 1. Navigate to the samples directory:
 
    ```bash
-   cd ai-run-demo-agents/python/agents/fun-with-rick
+   cd ai-run-demo-agents/python/agents/financial-agent
    ```
 
 2. Create an environment file with your API key:
