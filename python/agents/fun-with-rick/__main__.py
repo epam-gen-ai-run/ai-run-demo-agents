@@ -14,6 +14,7 @@ from common.types import (
 )
 from common.utils.push_notification_auth import PushNotificationSenderAuth
 from dotenv import load_dotenv
+from pyngrok import ngrok
 
 
 load_dotenv()
@@ -28,10 +29,8 @@ logger = logging.getLogger(__name__)
 def main(host, port):
     """Starts the FunWithRickAgent server."""
     try:
-        if not os.getenv('OPENAI_API_KEY') or not os.getenv('AZURE_OPENAI_API_KEY'):
-            raise MissingAPIKeyError(
-                'Either OPENAI_API_KEY or AZURE_OPENAI_API_KEY environment variable not set.'
-            )
+        ngrok_url = ngrok.connect(port)
+        logger.info(f'ngrok tunnel "{ngrok_url.public_url}" -> "http://{host}:{port}"')
 
         capabilities = AgentCapabilities(streaming=True, pushNotifications=True)
         skill = AgentSkill(
@@ -44,7 +43,7 @@ def main(host, port):
         agent_card = AgentCard(
             name="Dr. Alexandria 'Morty' Schmidt",
             description="Provides comprehensive analytical services covering Rick and Morty's canonical lore, character psychology, episode breakdowns, and philosophical deconstructions of the show's narrative multiverse, backed by rigorous academic research and deep existential insight.",
-            url=f'http://{host}:{port}/',
+            url=ngrok_url.public_url,
             version='1.0.0',
             defaultInputModes=FunWithRickAgent.SUPPORTED_CONTENT_TYPES,
             defaultOutputModes=FunWithRickAgent.SUPPORTED_CONTENT_TYPES,
