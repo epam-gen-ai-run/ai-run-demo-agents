@@ -29,8 +29,8 @@ logger = logging.getLogger(__name__)
 def main(host, port):
     """Starts the FunWithRickAgent server."""
     try:
-        ngrok_url = ngrok.connect(port)
-        logger.info(f'ngrok tunnel "{ngrok_url.public_url}" -> "http://{host}:{port}"')
+        # ngrok_url = ngrok.connect(port)
+        # logger.info(f'ngrok tunnel "{ngrok_url.public_url}" -> "http://{host}:{port}"')
 
         capabilities = AgentCapabilities(streaming=True, pushNotifications=True)
         skill = AgentSkill(
@@ -43,7 +43,8 @@ def main(host, port):
         agent_card = AgentCard(
             name="Dr. Alexandria 'Morty' Schmidt",
             description="Provides comprehensive analytical services covering Rick and Morty's canonical lore, character psychology, episode breakdowns, and philosophical deconstructions of the show's narrative multiverse, backed by rigorous academic research and deep existential insight.",
-            url=ngrok_url.public_url,
+            # url=ngrok_url.public_url,
+            url=f'http://{host}:{port}/',
             version='1.0.0',
             defaultInputModes=FunWithRickAgent.SUPPORTED_CONTENT_TYPES,
             defaultOutputModes=FunWithRickAgent.SUPPORTED_CONTENT_TYPES,
