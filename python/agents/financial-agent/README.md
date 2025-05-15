@@ -23,7 +23,8 @@ This agent uses LangGraph with OpenAI to help to search and analyze financial ma
 2. Create an environment file with your API key:
 
    ```bash
-   echo "AZURE_OPENAI_API_KEY=your_api_key_here" > .env
+   echo "CHAT_MODEL_PROVIDER=azure" > .env
+   echo "AZURE_OPENAI_API_KEY=your_api_key_here" >> .env
    echo "AZURE_OPENAI_ENDPOINT=your_endpoint_url" >> .env
    echo "OPENAI_API_VERSION=2024-12-01-preview" >> .env
    ```
