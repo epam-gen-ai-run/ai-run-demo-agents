@@ -35,7 +35,7 @@ def create_chat_model() -> BaseChatModel:
             raise ValueError("Model name is not specified. Ensure CHAT_MODEL is set.")
 
         chat_model = init_chat_model(
-            model_name=model_name,
+            model=model_name,
             model_provider=model_provider,
         )
 
