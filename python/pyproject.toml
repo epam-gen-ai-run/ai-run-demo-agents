@@ -25,6 +25,7 @@ packages = ["common", "hosts"]
 
 [tool.uv.workspace]
 members = [
+    "agents/currency_converter",
     "agents/fun-with-rick",
     "agents/financial-agent",
 ]

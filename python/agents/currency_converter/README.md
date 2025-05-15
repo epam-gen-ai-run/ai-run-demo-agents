@@ -65,12 +65,13 @@ sequenceDiagram
 2. Create an environment file with your API key:
 
    ```bash
-   echo "AZURE_OPENAI_API_KEY=your_api_key_here" > .env
+   echo "CHAT_MODEL_PROVIDER=azure" > .env
+   echo "AZURE_OPENAI_API_KEY=your_api_key_here" >> .env
    echo "AZURE_OPENAI_ENDPOINT=your_endpoint_url" >> .env
    echo "OPENAI_API_VERSION=2024-12-01-preview" >> .env
    ```
 
-3. Run the agent:
+3.1. Run the agent:
 
    ```bash
    # Basic run on default port 10000
@@ -78,6 +79,16 @@ sequenceDiagram
 
    # On custom host/port
    uv run . --host 0.0.0.0 --port 8080
+   ```
+
+[3.2. With Docker
+
+   ```bash
+   # Build docker image
+   docker buildx build --build-context ai-run-agents=/path/to/ai-run-demo-agents/python/ -t currency_converter:latest .
+
+   # Run docker container
+   docker run -it -p 10000:10000 -v ./.env:/app/agents/currency_converter/.env currency_converter:latest
    ```
 
 ## Technical Implementation
