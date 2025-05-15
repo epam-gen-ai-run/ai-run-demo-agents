@@ -29,7 +29,7 @@ This agent uses LangGraph with OpenAI to help to search and analyze financial ma
    echo "OPENAI_API_VERSION=2024-12-01-preview" >> .env
    ```
 
-3. Run the agent:
+3.1. Run the agent:
 
    ```bash
    # Basic run on default port 10600
@@ -37,6 +37,16 @@ This agent uses LangGraph with OpenAI to help to search and analyze financial ma
 
    # On custom host/port
    uv run . --host 0.0.0.0 --port 8080
+   ```
+
+3.2. With Docker
+
+   ```bash
+   # Build docker image
+   docker buildx build --build-context ai-run-agents=/path/to/ai-run-demo-agents/python/ -t financial-agent:latest .
+
+   # Run docker container
+   docker run -it -p 10500:10500 -v ./.env:/app/agents/financial-agent/.env financial-agent:latest
    ```
 
 ## Limitations
