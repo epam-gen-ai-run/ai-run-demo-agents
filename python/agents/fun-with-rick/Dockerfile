@@ -1,7 +1,5 @@
 FROM ghcr.io/astral-sh/uv:python3.13-alpine
 
-# sudo DOCKER_BUILDKIT=0 docker buildx build --build-context ai-run-agents=/mnt/c/Users/Dzmitry_Rubanau/projects/ai-run-demo-agents/python/ -t fun-with-rick:latest .
-
 # Copy the project into the image
 COPY --from=ai-run-agents common /app/common
 COPY --from=ai-run-agents pyproject.toml /app/pyproject.toml
@@ -17,31 +15,14 @@ ENV UV_LINK_MODE=copy
 
 # Sync the project into a new environment, asserting the lockfile is up to date
 WORKDIR /app/
-RUN uv sync --no-dev
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --no-dev
 
 WORKDIR /app/agents/fun-with-rick
-RUN uv sync --no-dev
-
-# Install the project's dependencies using the lockfile and settings
-# RUN --mount=type=cache,target=/root/.cache/uv \
-#     --mount=type=bind,source=uv.lock,target=uv.lock \
-#     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-#     uv sync --locked --no-install-project --no-dev
-
-# Then, add the rest of the project source code and install it
-# Installing separately from its dependencies allows optimal layer caching
-# COPY . /app
-# RUN --mount=type=cache,target=/root/.cache/uv \
-#     uv sync --locked --no-dev
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --no-dev
 
 # Place executables in the environment at the front of the path
 ENV PATH="/app/.venv/bin:$PATH"
 
-# Reset the entrypoint, don't invoke `uv`
-# ENTRYPOINT []
-
-# Run the FastAPI application by default
-# Uses `fastapi dev` to enable hot-reloading when the `watch` sync occurs
-# Uses `--host 0.0.0.0` to allow access from outside the container
-# CMD ["fastapi", "dev", "--host", "0.0.0.0", "src/uv_docker_example"]
 CMD ["uv", "run", "."]
