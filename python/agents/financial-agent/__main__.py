@@ -1,20 +1,22 @@
 import logging
-import os
 
 import click
 
+from agent_executor import FinancialAgentExecutor
 from agent import FinancialAgent
-from task_manager import AgentTaskManager
-from common.server import A2AServer
-from common.types import (
+from a2a.server.apps import A2AStarletteApplication
+from a2a.server.request_handlers import DefaultRequestHandler
+from a2a.server.tasks import InMemoryTaskStore
+from a2a.types import (
+    AgentAuthentication,
     AgentCapabilities,
     AgentCard,
     AgentSkill,
-    MissingAPIKeyError,
 )
-from common.utils.push_notification_auth import PushNotificationSenderAuth
 from dotenv import load_dotenv
+import uvicorn
 from pyngrok import ngrok
+
 
 load_dotenv()
 
@@ -31,7 +33,6 @@ def main(host, port):
         # ngrok_url = ngrok.connect(port)
         # logger.info(f'ngrok tunnel "{ngrok_url.public_url}" -> "http://{host}:{port}"')
 
-        capabilities = AgentCapabilities(streaming=True, pushNotifications=True)
         skill = AgentSkill(
             id='financial_agent',
             name='Tool for searching and analysing financial market data',
@@ -47,33 +48,23 @@ def main(host, port):
             version='1.0.0',
             defaultInputModes=FinancialAgent.SUPPORTED_CONTENT_TYPES,
             defaultOutputModes=FinancialAgent.SUPPORTED_CONTENT_TYPES,
-            capabilities=capabilities,
+            capabilities=AgentCapabilities(streaming=True),
             skills=[skill],
+            authentication=AgentAuthentication(schemes=['public']),
         )
 
-        notification_sender_auth = PushNotificationSenderAuth()
-        notification_sender_auth.generate_jwk()
-        server = A2AServer(
+        request_handler = DefaultRequestHandler(
+            agent_executor=FinancialAgentExecutor(),
+            task_store=InMemoryTaskStore(),
+        )
+        
+        server = A2AStarletteApplication(
             agent_card=agent_card,
-            task_manager=AgentTaskManager(
-                agent=FinancialAgent(),
-                notification_sender_auth=notification_sender_auth,
-            ),
-            host=host,
-            port=port,
+            http_handler=request_handler,
         )
-
-        server.app.add_route(
-            '/.well-known/jwks.json',
-            notification_sender_auth.handle_jwks_endpoint,
-            methods=['GET'],
-        )
-
+        
         logger.info(f'Starting server on {host}:{port}')
-        server.start()
-    except MissingAPIKeyError as e:
-        logger.error(f'Error: {e}')
-        exit(1)
+        uvicorn.run(server.build(), host=host, port=port)
     except Exception as e:
         logger.error(f'An error occurred during server startup: {e}')
         exit(1)
