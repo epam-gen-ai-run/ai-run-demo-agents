@@ -24,10 +24,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-from a2a.server.agent_execution import AgentExecutor
-from a2a.server.tasks import TaskStore
-    
-
 @click.command()
 @click.option('--host', 'host', default='localhost')
 @click.option('--port', 'port', default=10600)
