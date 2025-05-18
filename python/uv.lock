@@ -15,6 +15,7 @@ name = "a2a-sample-agent-langgraph"
 version = "0.1.0"
 source = { editable = "agents/currency_converter" }
 dependencies = [
+    { name = "a2a-sdk" },
     { name = "ai-run-demo-agents" },
     { name = "click" },
     { name = "httpx" },
@@ -28,6 +29,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "a2a-sdk", specifier = ">=0.2.1a1" },
     { name = "ai-run-demo-agents", editable = "." },
     { name = "click", specifier = ">=8.1.8" },
     { name = "httpx", specifier = ">=0.28.1" },
