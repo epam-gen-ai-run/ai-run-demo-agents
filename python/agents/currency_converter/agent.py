@@ -6,12 +6,12 @@ import httpx
 from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.tools import tool
 
-from langchain_openai import AzureChatOpenAI
 from pydantic import BaseModel
 
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.prebuilt import create_react_agent
 
+from common.utils.chat_model_factory import create_chat_model
 
 memory = MemorySaver()
 
@@ -69,9 +69,7 @@ class CurrencyAgent:
     )
 
     def __init__(self):
-        self.model = AzureChatOpenAI(
-            azure_deployment="gpt-4o",
-        )
+        self.model = create_chat_model()
         self.tools = [get_exchange_rate]
 
         self.graph = create_react_agent(
