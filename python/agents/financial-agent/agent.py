@@ -4,6 +4,7 @@ from collections.abc import AsyncIterable
 from typing import Any, Literal
 
 from langchain_core.messages import AIMessage, ToolMessage
+from langchain_core.runnables.config import RunnableConfig
 from langchain_core.tools import tool
 from pydantic import BaseModel
 
@@ -85,14 +86,20 @@ Other Instructions:
             response_format=ResponseFormat,
         )
 
-    def invoke(self, query, sessionId) -> str:
-        config = {'configurable': {'thread_id': sessionId}}
-        self.graph.invoke({'messages': [('user', query)]}, config)
+    def invoke(
+        self, query: str, sessionId: str
+    ) -> str:
+        inputs = {'messages': [('user', query)]}
+        config: RunnableConfig = {'configurable': {'thread_id': sessionId}}
+        
+        self.graph.invoke(inputs, config)
         return self.get_agent_response(config)
 
-    async def stream(self, query, sessionId) -> AsyncIterable[dict[str, Any]]:
+    async def stream(
+        self, query: str, sessionId: str
+    ) -> AsyncIterable[dict[str, Any]]:
         inputs = {'messages': [('user', query)]}
-        config = {'configurable': {'thread_id': sessionId}}
+        config: RunnableConfig = {'configurable': {'thread_id': sessionId}}
 
         for item in self.graph.stream(inputs, config, stream_mode='values'):
             message = item['messages'][-1]
@@ -121,10 +128,7 @@ Other Instructions:
         if structured_response and isinstance(
             structured_response, ResponseFormat
         ):
-            if (
-                structured_response.status == 'input_required'
-                or structured_response.status == 'error'
-            ):
+            if structured_response.status in {'input_required', 'error'}:
                 return {
                     'is_task_complete': False,
                     'require_user_input': True,
