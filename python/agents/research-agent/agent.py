@@ -10,12 +10,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-class State(TypedDict):
-    text: str
-    classification: str
-    entities: List[str]
-    summary: str
-
 class ResearchState(TypedDict):
     user_query: str
     research_topic: str
@@ -25,7 +19,7 @@ class ResearchState(TypedDict):
 
 llm = create_chat_model()
 
-def research_topic_extraction_node(state: ResearchState) -> State:
+def research_topic_extraction_node(state: ResearchState) -> ResearchState:
     prompt = PromptTemplate(
         input_variables=["user_query"],
         template="""
@@ -41,7 +35,7 @@ def research_topic_extraction_node(state: ResearchState) -> State:
     
     return {"research_topic": research_topic}
 
-def researcher_node(state: ResearchState) -> State:
+def researcher_node(state: ResearchState) -> ResearchState:
     prompt = PromptTemplate.from_template(
         """
         You are an experienced research specialist for {research_topic} with a talent for finding relevant information from various sources.
@@ -72,7 +66,7 @@ def researcher_node(state: ResearchState) -> State:
     
     return {"research_findings": response.content}
 
-def analyst_node(state: ResearchState) -> State:
+def analyst_node(state: ResearchState) -> ResearchState:
     prompt = PromptTemplate.from_template(
         """
         You are a skilled data analyst and report writer for {research_topic} with a background in data interpretation and technical writing.
