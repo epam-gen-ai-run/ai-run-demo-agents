@@ -17,6 +17,7 @@ Example:
 
 from dataclasses import dataclass, field
 from typing import TypedDict, Dict, Any, Optional, Protocol, List
+from collections.abc import AsyncIterable
 from langchain.prompts import PromptTemplate
 from langchain.schema import HumanMessage
 from langchain.schema.runnable import RunnableConfig
@@ -27,6 +28,7 @@ from dotenv import load_dotenv
 import re
 import time
 import logging
+import asyncio
 
 load_dotenv()
 
@@ -91,7 +93,13 @@ class ResearchAgentProtocol(Protocol):
     """Protocol defining the interface for research agents.
     
     This protocol ensures that any implementation of a research agent
-    must provide an invoke method with the specified signature.
+    must provide both invoke and stream methods with the specified signatures.
+    The protocol defines the contract that all research agent implementations
+    must follow, ensuring consistent behavior across different implementations.
+    
+    Methods:
+        invoke: Process a research query synchronously and return results.
+        stream: Process a research query asynchronously and stream updates.
     """
     def invoke(self, query: str, session_id: str) -> AgentResponse:
         """Process a research query and return the results.
@@ -106,6 +114,50 @@ class ResearchAgentProtocol(Protocol):
         Raises:
             ValueError: If the query or session_id is invalid.
             RuntimeError: If the research workflow fails.
+            
+        Example:
+            ```python
+            agent = ResearchAgent()
+            response = agent.invoke("climate change", "session-123")
+            if response["is_task_complete"]:
+                print(response["content"])
+            ```
+        """
+        ...
+    
+    async def stream(self, query: str, session_id: str) -> AsyncIterable[AgentResponse]:
+        """Process a research query and stream updates as they occur.
+        
+        This method provides real-time updates as the research progresses through
+        each stage of the workflow. Each update includes the current stage,
+        content, and status information.
+        
+        Args:
+            query: The research query to process.
+            session_id: Unique identifier for the research session.
+            
+        Yields:
+            AgentResponse containing the current stage and content.
+            Each response includes:
+                - is_task_complete: Whether the research is complete
+                - content: Current content or update message
+                - error: Optional error message
+                - session_id: Session identifier
+                - timestamp: Unix timestamp of the update
+            
+        Raises:
+            ValueError: If the query or session_id is invalid.
+            RuntimeError: If the research workflow fails.
+            TimeoutError: If the operation exceeds the configured timeout.
+            
+        Example:
+            ```python
+            async for update in agent.stream("climate change", "session-123"):
+                if update["is_complete"]:
+                    print("Research complete!")
+                else:
+                    print(f"Content: {update['content']}")
+            ```
         """
         ...
 
@@ -410,6 +462,120 @@ class ResearchAgent:
                 'timestamp': time.time()
             }
     
+    async def stream(self, query: str, session_id: str) -> AsyncIterable[AgentResponse]:
+        """Process a research query and stream updates as they occur.
+        
+        This method implements the streaming interface defined in ResearchAgentProtocol.
+        It processes a research query through multiple stages (topic extraction,
+        research, and analysis) while providing real-time updates on the progress.
+        
+        The method yields updates at each stage of the workflow:
+        1. Topic Extraction: Extracts the research topic from the query
+        2. Research: Conducts research on the extracted topic
+        3. Analysis: Analyzes findings and generates the final report
+        
+        Each update includes the current stage, content, and status information,
+        allowing clients to track progress and handle errors appropriately.
+        
+        Args:
+            query: The research query to process. Must be a non-empty string
+                  not exceeding MAX_QUERY_LENGTH characters.
+            session_id: Unique identifier for the research session. Must match
+                       SESSION_ID_PATTERN.
+            
+        Yields:
+            AgentResponse containing the current stage and content.
+            Each response includes:
+                - is_task_complete: Whether the research is complete
+                - content: Current content or update message
+                - error: Optional error message if something went wrong
+                - session_id: Session identifier
+                - timestamp: Unix timestamp of the update
+            
+        Raises:
+            ValueError: If the query is empty or exceeds MAX_QUERY_LENGTH,
+                       or if session_id doesn't match SESSION_ID_PATTERN.
+            RuntimeError: If the research workflow fails.
+            Exception: For any unexpected errors during processing.
+            
+        Example:
+            ```python
+            async def process_research(agent: ResearchAgent, query: str):
+                session_id = f"session-{uuid.uuid4()}"
+                try:
+                    async for update in agent.stream(query, session_id):
+                        if update["is_complete"]:
+                            print("Research complete!")
+                            print(f"Report: {update['content']}")
+                        else:
+                            print(f"Progress: {update['content']}")
+                        if update.get("error"):
+                            print(f"Error: {update['error']}")
+                            break
+                except Exception as e:
+                    print(f"Research failed: {str(e)}")
+            ```
+        """
+        try:
+            # Add validation at the start
+            if error := self._validate_input(query, session_id):
+                yield {
+                    'is_task_complete': False,
+                    'content': 'Invalid input',
+                    'error': error,
+                    'session_id': session_id,
+                    'timestamp': time.time()
+                }
+                return
+            
+            # Initialize workflow state
+            config: RunnableConfig = {'configurable': {'thread_id': session_id}}
+            initial_state = {
+                "user_query": query,
+                "timestamp": time.time(),
+                "error": None
+            }
+
+            # Stream updates from each workflow stage
+            for item in self._workflow.stream(initial_state, config, stream_mode='updates'):
+                if item.get("node_research_topic_extraction"):
+                    yield {
+                        'is_task_complete': False,
+                        'content': 'Extracting research topic...',
+                        'error': None,
+                        'session_id': session_id,
+                        'timestamp': time.time()
+                    }
+                elif item.get("node_researcher"):
+                    yield {
+                        'is_task_complete': False,
+                        'content': 'Conducting research...',
+                        'error': None,
+                        'session_id': session_id,
+                        'timestamp': time.time()
+                    }
+                elif item.get("node_analyst"):
+                    yield {
+                        'is_task_complete': False,
+                        'content': 'Generating research report...',
+                        'error': None,
+                        'session_id': session_id,
+                        'timestamp': time.time()
+                    }
+
+            # Yield final response
+            yield self._get_agent_response(config, session_id)
+            
+        except Exception as e:
+            logger.error(f"Error in streaming workflow: {str(e)}")
+            yield {
+                'is_task_complete': False,
+                'content': 'An error occurred during research',
+                'error': str(e),
+                'session_id': session_id,
+                'timestamp': time.time()
+            }
+    
     def _get_agent_response(self, config: RunnableConfig, session_id: str) -> AgentResponse:
         """Get the agent response from the workflow state.
         
@@ -465,14 +631,39 @@ class ResearchAgent:
             }
 
 # Example usage
-if __name__ == "__main__":
+async def main():
+    """Example usage of the ResearchAgent's streaming functionality.
+    
+    This function demonstrates how to use the ResearchAgent's stream method
+    to process a research query and handle the streaming updates.
+    
+    Example:
+        ```python
+        asyncio.run(main())
+        # Output:
+        # Extracting research topic...
+        # Conducting research...
+        # Generating research report...
+        # Research complete!
+        # [Final report content]
+        ```
+    """
+    # Create the agent
     agent = ResearchAgent()
-    agent_response = agent.invoke(
+    
+    # Use the stream method in an async context
+    async for update in agent.stream(
         "What is the most important thing to do to fix the planet?",
         "test-session-123"
-    )
-    
-    print(">>> Task Complete:", agent_response["is_task_complete"])
-    print(">>> Research Report:", agent_response["content"])
-    if agent_response.get("error"):
-        print(">>> Error:", agent_response["error"])
+    ):
+        print(update['content'])
+        if update.get("error"):
+            print(f"Error: {update['error']}")
+            break
+        if update["is_task_complete"]:
+            print("\nResearch complete!")
+
+# Run the async main function
+if __name__ == "__main__":
+    asyncio.run(main())
+
