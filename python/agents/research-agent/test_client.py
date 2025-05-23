@@ -1,6 +1,8 @@
-from common.client import A2AClient
+import traceback
 from typing import Any
 from uuid import uuid4
+
+from common.client import A2AClient
 from common.client.card_resolver import A2ACardResolver
 from common.types import (
     SendTaskResponse,
@@ -9,21 +11,16 @@ from common.types import (
     Message,
     TextPart,
 )
-import httpx
-import traceback
 
 AGENT_URL = 'http://localhost:10700'
 
 
-def create_send_task_payload(
-    text: str, task_id: str | None = None, context_id: str | None = None
-) -> Message:
+def create_send_task_payload(text: str) -> Message:
     """Helper function to create the payload for sending a task."""
     return Message(
         role='user',
         parts=[TextPart(text=text)],
     )
-
 
 def print_json_response(response: Any, description: str) -> None:
     """Helper function to print the JSON representation of a response."""
@@ -32,7 +29,6 @@ def print_json_response(response: Any, description: str) -> None:
         print(f'{response.result.model_dump_json(exclude_none=True)}\n')
     else:
         print(f'{response.model_dump(mode="json", exclude_none=True)}\n')
-
 
 async def run_single_turn_test(client: A2AClient) -> None:
     """Runs a single-turn non-streaming test."""
@@ -62,7 +58,6 @@ async def run_single_turn_test(client: A2AClient) -> None:
     get_params = {"id": task_id}
     get_response: GetTaskResponse = await client.get_task(get_params)
     print_json_response(get_response, 'Query Task Response')
-
 
 async def run_streaming_test(client: A2AClient) -> None:
     """Runs a streaming test."""
