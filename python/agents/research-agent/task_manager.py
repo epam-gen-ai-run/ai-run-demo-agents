@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import traceback
-
+import os
 from collections.abc import AsyncIterable
 
 from agent import ResearchAgent, AgentResponse
@@ -27,6 +27,12 @@ from common.types import (
 )
 
 
+# Configure logging
+log_level = os.getenv('LOG_LEVEL', 'INFO').upper()
+logging.basicConfig(
+    level=getattr(logging, log_level),
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 

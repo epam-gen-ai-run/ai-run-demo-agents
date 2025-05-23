@@ -16,6 +16,7 @@ Example:
 """
 
 from dataclasses import dataclass, field
+import os
 from typing import TypedDict, Dict, Any, Optional, Protocol, List
 from collections.abc import AsyncIterable
 from langchain.prompts import PromptTemplate
@@ -33,8 +34,13 @@ import asyncio
 load_dotenv()
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+log_level = os.getenv('LOG_LEVEL', 'INFO').upper()
+logging.basicConfig(
+    level=getattr(logging, log_level),
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
+
 
 # Constants
 MAX_QUERY_LENGTH = 1000  # Maximum allowed length for research queries
