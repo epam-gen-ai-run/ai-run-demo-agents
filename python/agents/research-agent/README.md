@@ -49,6 +49,24 @@ This agent uses LangGraph with OpenAI to provide comprehensive research services
    docker run -it -p 10700:10700 -v ./.env:/app/agents/research-agent/.env research-agent:latest
    ```
 
+4. Testing
+
+The test client provides a way to verify the ResearchAgent's A2A protocol implementation,
+including both synchronous and streaming interactions.
+
+### Prerequisites
+
+- The agent server must be running (see Setup & Running section above)
+- Python 3.13+ installed
+- Required dependencies installed (see Setup section)
+
+### Running Tests
+
+   ```bash
+   # From the research-agent directory
+   uv run test_client.py
+   ```
+
 ## Features
 
 - Comprehensive research capabilities
