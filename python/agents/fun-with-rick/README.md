@@ -37,6 +37,9 @@ This agent uses LangGraph with OpenAI to provide comprehensive analytical servic
 
    # On custom host/port
    uv run . --host 0.0.0.0 --port 8080
+   
+   # Run with ngrok
+   uv run . --ngrok_enabled
    ```
 3.2. With Docker
 
