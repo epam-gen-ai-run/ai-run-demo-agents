@@ -26,11 +26,15 @@ logger = logging.getLogger(__name__)
 @click.command()
 @click.option('--host', 'host', default='localhost')
 @click.option('--port', 'port', default=10600)
-def main(host, port):
-    """Starts the FunWithRickAgent server."""
+@click.option('--ngrok_enabled', 'ngrok_enabled', is_flag=True,  default=False)
+def main(host, port, ngrok_enabled):
+    """Starts the Financial Agent server."""
     try:
-        # ngrok_url = ngrok.connect(port)
-        # logger.info(f'ngrok tunnel "{ngrok_url.public_url}" -> "http://{host}:{port}"')
+        agent_url = f'http://{host}:{port}/'
+        if ngrok_enabled:
+            ngrok_url = ngrok.connect(port)
+            agent_url = ngrok_url.public_url
+            logger.info(f'ngrok tunnel "{agent_url}" -> "http://{host}:{port}"')
 
         capabilities = AgentCapabilities(streaming=True, pushNotifications=True)
         skill = AgentSkill(
@@ -43,8 +47,7 @@ def main(host, port):
         agent_card = AgentCard(
             name="Dr. Alexandria 'Morty' Schmidt",
             description="Provides comprehensive analytical services covering Rick and Morty's canonical lore, character psychology, episode breakdowns, and philosophical deconstructions of the show's narrative multiverse, backed by rigorous academic research and deep existential insight.",
-            # url=ngrok_url.public_url,
-            url=f'http://{host}:{port}/',
+            url=agent_url,
             version='1.0.0',
             defaultInputModes=FunWithRickAgent.SUPPORTED_CONTENT_TYPES,
             defaultOutputModes=FunWithRickAgent.SUPPORTED_CONTENT_TYPES,

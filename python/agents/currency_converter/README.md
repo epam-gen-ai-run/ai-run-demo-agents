@@ -68,7 +68,7 @@ sequenceDiagram
    echo "CHAT_MODEL_PROVIDER=azure" > .env
    echo "AZURE_OPENAI_API_KEY=your_api_key_here" >> .env
    echo "AZURE_OPENAI_ENDPOINT=your_endpoint_url" >> .env
-   echo "OPENAI_API_VERSION=2024-12-01-preview" >> .env
+   echo "AZURE_OPENAI_API_VERSION=2024-12-01-preview" >> .env
    ```
 
 3.1. Run the agent:

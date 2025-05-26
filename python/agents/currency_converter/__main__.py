@@ -24,11 +24,15 @@ logger = logging.getLogger(__name__)
 @click.command()
 @click.option('--host', 'host', default='localhost')
 @click.option('--port', 'port', default=10000)
-def main(host, port):
-    """Starts the Currency Agent server."""
+@click.option('--ngrok_enabled', 'ngrok_enabled', is_flag=True,  default=False)
+def main(host, port, ngrok_enabled):
+    """Starts the Financial Agent server."""
     try:
-        # ngrok_url = ngrok.connect(port)
-        # logger.info(f'ngrok tunnel "{ngrok_url.public_url}" -> "http://{host}:{port}"')
+        agent_url = f'http://{host}:{port}/'
+        if ngrok_enabled:
+            ngrok_url = ngrok.connect(port)
+            agent_url = ngrok_url.public_url
+            logger.info(f'ngrok tunnel "{agent_url}" -> "http://{host}:{port}"')
 
         capabilities = AgentCapabilities(streaming=True, pushNotifications=True)
         skill = AgentSkill(
@@ -41,8 +45,7 @@ def main(host, port):
         agent_card = AgentCard(
             name='Currency Agent',
             description='Helps with exchange rates for currencies',
-            # url=ngrok_url.public_url,
-            url=f'http://{host}:{port}/',
+            url=agent_url,
             version='1.0.0',
             defaultInputModes=CurrencyAgent.SUPPORTED_CONTENT_TYPES,
             defaultOutputModes=CurrencyAgent.SUPPORTED_CONTENT_TYPES,
