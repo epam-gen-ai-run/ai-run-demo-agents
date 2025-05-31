@@ -4,11 +4,7 @@ import { CodeMieApiClient } from './services/codemie-api-client';
 
 async function main() {
   const codemie = new CodeMieApiClient(env.CODEMIE_API_URL);
-  const assistants = await codemie.fetchAssistants();
-  console.log(`Found ${assistants.length} assistants`);
-  console.log(assistants.map(a => `${a.name} - ${a.agentCardUrl}`));
-
-  const bot = new CodeMieBot(assistants);
+  const bot = new CodeMieBot(codemie);
   console.log(`Starting CodeMieBot on port ${env.PORT || 3000}`);
 
   await bot.start(env.PORT || 3000);

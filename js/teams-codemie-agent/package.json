@@ -23,6 +23,7 @@
     "@microsoft/teams.common": "preview",
     "@microsoft/teams.dev": "preview",
     "@microsoft/teams.graph": "preview",
+    "@microsoft/teams.openai": "^0.2.14",
     "@types/uuid": "^10.0.0",
     "axios": "^1.9.0",
     "uuid": "^11.1.0",

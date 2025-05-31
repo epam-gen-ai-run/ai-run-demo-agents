@@ -54,14 +54,14 @@ export class CodeMieApiClient {
 
   constructor(baseUrl: string = '/api') {
     this.baseUrl = baseUrl;
-    // const cookie1 = '';
-    // const cookie2 = '';
+    const cookie1 = '';
+    const cookie2 = '';
     // Create axios instance with default config
     this.apiClient = axios.create({
       baseURL: baseUrl,
       headers: {
         'Content-Type': 'application/json',
-        // 'Cookie': `_oauth2_proxy_0=${cookie1}; _oauth2_proxy_1=${cookie2}`
+        'Cookie': `_oauth2_proxy_0=${cookie1}; _oauth2_proxy_1=${cookie2}`
         // Add any required authentication headers here
       },
       // Add default timeout
@@ -116,6 +116,18 @@ export class CodeMieApiClient {
         throw error;
       }
       throw new CodeMieApiError('Failed to fetch assistants');
+    }
+  }
+
+  async fetchAssistantAgentCard(url: string): Promise<string> {
+    try {
+      const response = await this.apiClient.get(url);
+      return response.data;
+    } catch (error) {
+      if (error instanceof CodeMieApiError) {
+        throw error;
+      }
+      throw new CodeMieApiError('Failed to fetch assistant agent card');
     }
   }
 }
