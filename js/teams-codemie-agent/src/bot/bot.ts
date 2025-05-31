@@ -1,10 +1,15 @@
 import { App } from '@microsoft/teams.apps';
 import { DevtoolsPlugin } from '@microsoft/teams.dev';
+import { Assistant } from '../interfaces/types';
 
 export class CodeMieBot {
   private app: App;
+  private assistants: Assistant[];
 
-  constructor() {
+
+  constructor(assistants: Assistant[]) {
+    this.assistants = assistants;
+    
     // Initialize Teams app
     this.app = new App({
       plugins: [new DevtoolsPlugin()],
@@ -21,9 +26,9 @@ export class CodeMieBot {
     });
   }
 
-  public async start(): Promise<void> {
+  public async start(port: number): Promise<void> {
     try {
-      await this.app.start();
+      await this.app.start(port);
     } catch (error) {
       throw error;
     }
