@@ -109,6 +109,7 @@ export class CodeMieApiClient {
       );
       return response.data.data.map(a => ({
         ...a,
+        url: `${this.baseUrl}/a2a/assistants/${a.id}`,
         agentCardUrl: `${this.baseUrl}/a2a/assistants/${a.id}/.well-known/agent.json`
       }));
     } catch (error) {
