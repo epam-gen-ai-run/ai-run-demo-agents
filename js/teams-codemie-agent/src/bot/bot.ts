@@ -3,10 +3,17 @@ import { DevtoolsPlugin } from '@microsoft/teams.dev';
 import { ChatPrompt, ObjectSchema } from '@microsoft/teams.ai';
 import { OpenAIChatModelOptions, OpenAIChatModel } from '@microsoft/teams.openai';
 import { env } from '../config/env';
-
 import { CodeMieApiClient } from '../services/codemie-api-client';
 import { AgentManager } from '@microsoft/teams.a2a';
 import { v4 as uuidv4 } from 'uuid';
+import { Assistant } from '../interfaces/types';
+
+const BOT_CONFIG = {
+  TYPING_DELAY: 1000,
+  MAX_RETRIES: 3,
+  RETRY_DELAY: 1000,
+  DEFAULT_ERROR_MESSAGE: "I'm sorry, I couldn't process that request."
+} as const;
 
 const describeAssistantSchema = {
   type: 'object',
@@ -34,124 +41,193 @@ const sendRequestSchema = {
   required: ['assistantName', 'request'],
 } as ObjectSchema;
 
-export class CodeMieBot {
-  private app: App;
-  private codemie: CodeMieApiClient
-  private prompt!: ChatPrompt;
+// Add custom error types
+class AssistantNotFoundError extends Error {
+  constructor(assistantName: string) {
+    super(`Assistant "${assistantName}" not found`);
+    this.name = 'AssistantNotFoundError';
+  }
+}
+
+// Add proper return types for functions
+interface TaskResponse {
+  id: string;
+  status: 'success' | 'error';
+  message: string;
+  url?: string;
+}
+
+class AssistantManager {
+  private assistants: Map<string, Assistant> = new Map();
   private agentManager: AgentManager;
 
-  constructor(codemie: CodeMieApiClient) {
-    this.codemie = codemie;
+  constructor(private codemie: CodeMieApiClient) {
     this.agentManager = new AgentManager();
-
-    // Initialize Teams app
-    this.app = new App({
-      plugins: [new DevtoolsPlugin()],
-    });
-
-    // Set up message handlers
-    this.initMessageHandlers();
   }
 
-  private initMessageHandlers(): void {
-    this.app.on('message', async ({ send, activity }) => {
-        await send({ type: 'typing' });
-        const response = await this.prompt.send(activity.text);
-        await send(response.content ?? "I'm sorry, I couldn't process that request.");
-    });
-  }
-
-  async initPrompt(): Promise<ChatPrompt> {
+  async initialize(): Promise<void> {
     const assistants = await this.codemie.fetchAssistants();
     console.log(`Found ${assistants.length} assistants`);
-    console.log(assistants.map(a => a.name));
+    
+    // Register assistants with the agent manager
+    await Promise.all(
+      assistants.map(assistant => {
+        this.assistants.set(assistant.name, assistant);
+        return this.agentManager.use(assistant.id, assistant.url);
+      })
+    );
+  }
 
-    assistants.forEach(async (assistant) => {
-      this.agentManager.use(assistant.id, assistant.url);
-    });
-  
-    return new ChatPrompt(
+  findAssistant(name: string): Assistant | undefined {
+    return this.assistants.get(name);
+  }
+
+  getAllAssistants(): Assistant[] {
+    return Array.from(this.assistants.values());
+  }
+
+  async getAssistantAgentCard(name: string): Promise<string> {
+    const assistant = this.findAssistant(name);
+    if (!assistant) {
+      throw new AssistantNotFoundError(name);
+    }
+    return this.codemie.fetchAssistantAgentCard(assistant.agentCardUrl);
+  }
+
+  async sendTaskToAssistant(name: string, request: string): Promise<TaskResponse> {
+    const assistant = this.findAssistant(name);
+    if (!assistant) {
+      throw new AssistantNotFoundError(name);
+    }
+
+    const taskId = uuidv4();
+    const task = await this.agentManager.sendTask(
+      assistant.id,
       {
-        instructions: [
-          'You are a helpful assistant that connects users with specialized AI ',
-          'assistants from the CodeMie platform. Your role is to:',
-          '',
-          '1. Help users discover and understand available assistants',
-          '2. Route specific requests to the appropriate assistant',
-          '3. Provide clear, concise responses',
-          '',
-          'To use a specific assistant, users can:',
-          '- Ask about available assistants using "list assistants" or "what can you do?"',
-          '- Get details about an assistant using "tell me about [assistant name]"',
-          '- Send direct request to an assistant using "@[assistant name] [request]"',
-          '',
-          'Available assistants:',
-          assistants.map(assistant => `- ${assistant.name}`).join('\n'),
-          '',
-          'Always be helpful, clear, and concise in your responses. If you\'re unsure ',
-          'about a request, ask for clarification.',
-        ].join('\n'),
-        model: new OpenAIChatModel({
-            model: env.OPENAI_MODEL,
-            apiKey: env.OPENAI_API_KEY,
-        } as OpenAIChatModelOptions),
-      },
-    ).function(
+        id: taskId,
+        message: {
+          role: 'user',
+          parts: [{ type: 'text' as const, text: request }],
+        },
+      }
+    ).catch(error => {
+      console.error(`Error sending task: ${error}`);
+      throw error;
+    });
+
+    return {
+      id: taskId,
+      status: 'success',
+      message: `Assistant "${assistant.name}" has been requested to perform the task: "${request}"`,
+      url: assistant.url
+    };
+  }
+}
+
+class MessageProcessor {
+  private prompt?: ChatPrompt;
+
+  constructor(
+    private assistantManager: AssistantManager,
+    private openaiConfig: { model: string; apiKey: string }
+  ) {}
+
+  async initialize(): Promise<void> {
+    const assistants = this.assistantManager.getAllAssistants();
+    this.prompt = await this.createPrompt(assistants);
+  }
+
+  private async createPrompt(assistants: Assistant[]): Promise<ChatPrompt> {
+    return new ChatPrompt({
+      instructions: [
+        'You are a helpful assistant that connects users with specialized AI ',
+        'assistants from the CodeMie platform. Your role is to:',
+        '',
+        '1. Help users discover and understand available assistants',
+        '2. Route specific requests to the appropriate assistant',
+        '3. Provide clear, concise responses',
+        '',
+        'To use a specific assistant, users can:',
+        '- Ask about available assistants using "list assistants" or "what can you do?"',
+        '- Get details about an assistant using "tell me about [assistant name]"',
+        '- Send direct request to an assistant using "@[assistant name] [request]"',
+        '',
+        'Available assistants:',
+        assistants.map(assistant => `- ${assistant.name}`).join('\n'),
+        '',
+        'Always be helpful, clear, and concise in your responses. If you\'re unsure ',
+        'about a request, ask for clarification.',
+      ].join('\n'),
+      model: new OpenAIChatModel({
+        model: this.openaiConfig.model,
+        apiKey: this.openaiConfig.apiKey,
+      } as OpenAIChatModelOptions),
+    }).function(
       'describe_assistant',
       'describes the assistant, including its name, description, skills, and capabilities',
       describeAssistantSchema,
       async ({ assistantName }: { assistantName: string }) => {
-          console.log(`Looking for assistant "${assistantName}"`);
-          const assistant = assistants.find(assistant => assistant.name === assistantName);
-          if (!assistant) {
-              throw new Error(`Assistant "${assistantName}" not found`);
-          }
-          const agentCard = await this.codemie.fetchAssistantAgentCard(assistant.agentCardUrl);
-          return agentCard;
+        return this.assistantManager.getAssistantAgentCard(assistantName);
       }
     ).function(
       'list_assistants',
       'returns the list of available assistants',
-      () => {
-        console.log(`Getting available assistants`);
-        return assistants.map(a => a.name);
-      }
+      () => this.assistantManager.getAllAssistants().map(a => a.name)
     ).function(
       'send_request',
       'sends a request to an assistant',
       sendRequestSchema,
       async ({ assistantName, request }: { assistantName: string, request: string }) => {
-        console.log(`Requesting assistant "${assistantName}" to perform task: "${request}"`);
-        const assistant = assistants.find(assistant => assistant.name === assistantName);
-        if (!assistant) {
-            throw new Error(`Assistant "${assistantName}" not found`);
-        }
-
-        const taskId = uuidv4();
-        const task = await this.agentManager.sendTask(
-          assistant.id,
-          {
-            id: taskId,
-            message: {
-              role: 'user',
-              parts: [{ type: 'text' as const, text: request }],
-            },
-          }
-        ).catch(error => {
-          console.error(`Error sending task: ${error}`);
-          throw error;
-        });
-        console.log(`Task received: ${task}`);
-
-        console.log(`Assistant "${assistant.name}" has been requested to perform the task: "${request}" via the A2A API ${assistant.url}`);
-        return `Assistant "${assistant.name}" has been requested to perform the task: "${request}" via the A2A API ${assistant.url}`;
+        return this.assistantManager.sendTaskToAssistant(assistantName, request);
       }
     );
   }
 
+  async processMessage(text: string): Promise<string> {
+    if (!this.prompt) {
+      throw new Error('MessageProcessor not initialized. Call initialize() first.');
+    }
+    const response = await this.prompt.send(text);
+    return response.content ?? BOT_CONFIG.DEFAULT_ERROR_MESSAGE;
+  }
+}
+
+export class CodeMieBot {
+  private app: App;
+  private assistantManager: AssistantManager;
+  private messageProcessor: MessageProcessor;
+
+  constructor(codemie: CodeMieApiClient) {
+    this.assistantManager = new AssistantManager(codemie);
+    this.messageProcessor = new MessageProcessor(
+      this.assistantManager,
+      { model: env.OPENAI_MODEL, apiKey: env.OPENAI_API_KEY }
+    );
+
+    this.app = new App({
+      plugins: [new DevtoolsPlugin()],
+    });
+
+    this.initMessageHandlers();
+  }
+
+  private initMessageHandlers(): void {
+    this.app.on('message', async ({ send, activity }) => {
+      try {
+        await send({ type: 'typing' });
+        const response = await this.messageProcessor.processMessage(activity.text);
+        await send(response);
+      } catch (error) {
+        console.error('Error processing message:', error);
+        await send('I encountered an error processing your request. Please try again.');
+      }
+    });
+  }
+
   public async start(port: number): Promise<void> {
     try {
-      this.prompt = await this.initPrompt();
+      await this.assistantManager.initialize();
+      await this.messageProcessor.initialize();
       await this.app.start(port);
     } catch (error) {
       throw error;
