@@ -2,6 +2,7 @@ import axios, { AxiosInstance, AxiosError, AxiosResponse } from 'axios';
 import https from 'https';
 
 import { Assistant } from '../interfaces/types';
+import { AgentCard } from '@microsoft/teams.a2a';
 
 /** Default timeout for API requests in milliseconds */
 const DEFAULT_TIMEOUT = 10000;
@@ -12,8 +13,7 @@ const DEFAULT_PAGE_SIZE = 100;
 /** API endpoint definitions */
 const API_ENDPOINTS = {
   ASSISTANTS: '/assistants',
-  ASSISTANT: (id: string) => `/a2a/assistants/${id}`,
-  AGENT_CARD: (id: string) => `/a2a/assistants/${id}/.well-known/agent.json`
+  ASSISTANT: (id: string) => `/a2a/assistants/${id}`
 } as const;
 
 /**
@@ -160,8 +160,7 @@ export class CodeMieApiClient {
       }
       return response.data.data.map(a => ({
         ...a,
-        url: `${this.baseUrl}${API_ENDPOINTS.ASSISTANT(a.id)}`,
-        agentCardUrl: `${this.baseUrl}${API_ENDPOINTS.AGENT_CARD(a.id)}`
+        url: `${this.baseUrl}${API_ENDPOINTS.ASSISTANT(a.id)}`
       }));
     } catch (error) {
       if (error instanceof AxiosError) {
@@ -178,13 +177,15 @@ export class CodeMieApiClient {
 
   /**
    * Fetches the agent card for a specific assistant
-   * @param {string} url - The URL of the agent card to fetch
-   * @returns {Promise<string>} The agent card content
+   * @param {string} assistantUrl - The URL of the assistant to fetch the agent card for
+   * @returns {Promise<AgentCard>} The agent card
    * @throws {CodeMieApiError} If the request fails or the agent card cannot be fetched
    */
-  async fetchAssistantAgentCard(url: string): Promise<string> {
+  async fetchAssistantAgentCard(assistantUrl: string): Promise<AgentCard> {
     try {
-      const response = await this.apiClient.get(url);
+      const response = await this.apiClient.get<AgentCard>(
+        `${assistantUrl}/.well-known/agent.json`
+      );
       return response.data;
     } catch (error) {
       if (error instanceof CodeMieApiError) {

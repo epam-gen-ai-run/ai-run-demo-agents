@@ -3,7 +3,6 @@ interface Assistant {
     name: string;
     slug: string;
     url: string;
-    agentCardUrl: string;
 }
 
 export { Assistant };

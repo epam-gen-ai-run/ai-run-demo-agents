@@ -4,7 +4,7 @@ import { ChatPrompt, ObjectSchema } from '@microsoft/teams.ai';
 import { OpenAIChatModelOptions, OpenAIChatModel } from '@microsoft/teams.openai';
 import { env } from '../config/env';
 import { CodeMieApiClient } from '../services/codemie-api-client';
-import { AgentManager } from '@microsoft/teams.a2a';
+import { AgentManager, AgentCard } from '@microsoft/teams.a2a';
 import { v4 as uuidv4 } from 'uuid';
 import { Assistant } from '../interfaces/types';
 
@@ -68,14 +68,6 @@ class AssistantManager {
   async initialize(): Promise<void> {
     const assistants = await this.codemie.fetchAssistants();
     console.log(`Found ${assistants.length} assistants`);
-    
-    // Register assistants with the agent manager
-    await Promise.all(
-      assistants.map(assistant => {
-        this.assistants.set(assistant.name, assistant);
-        return this.agentManager.use(assistant.id, assistant.url);
-      })
-    );
   }
 
   findAssistant(name: string): Assistant | undefined {
@@ -86,12 +78,12 @@ class AssistantManager {
     return Array.from(this.assistants.values());
   }
 
-  async getAssistantAgentCard(name: string): Promise<string> {
+  async getAssistantAgentCard(name: string): Promise<AgentCard> {
     const assistant = this.findAssistant(name);
     if (!assistant) {
       throw new AssistantNotFoundError(name);
     }
-    return this.codemie.fetchAssistantAgentCard(assistant.agentCardUrl);
+    return this.codemie.fetchAssistantAgentCard(assistant.url);
   }
 
   async sendTaskToAssistant(name: string, request: string): Promise<TaskResponse> {
@@ -101,19 +93,27 @@ class AssistantManager {
     }
 
     const taskId = uuidv4();
-    const task = await this.agentManager.sendTask(
-      assistant.id,
-      {
-        id: taskId,
-        message: {
-          role: 'user',
-          parts: [{ type: 'text' as const, text: request }],
-        },
-      }
-    ).catch(error => {
-      console.error(`Error sending task: ${error}`);
-      throw error;
-    });
+    const task = await this.codemie.fetchAssistantAgentCard(assistant.url)
+      .then(agentCard => {
+        console.log(`Agent card: ${JSON.stringify(agentCard)}`);
+
+        this.agentManager.use(assistant.id, agentCard.url, agentCard);
+        return this.agentManager.sendTask(
+          assistant.id,
+          {
+            id: taskId,
+            message: {
+              role: 'user',
+              parts: [{ type: 'text' as const, text: request }],
+            },
+          }
+        )
+      }).catch(error => {
+        console.error(`Error sending task: ${error}`);
+        throw error;
+      });
+
+    console.log(`Task: ${JSON.stringify(task)}`);
 
     return {
       id: taskId,
