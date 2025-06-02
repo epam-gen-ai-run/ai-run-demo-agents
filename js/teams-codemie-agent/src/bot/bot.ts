@@ -68,6 +68,8 @@ class AssistantManager {
   async initialize(): Promise<void> {
     const assistants = await this.codemie.fetchAssistants();
     console.log(`Found ${assistants.length} assistants`);
+
+    assistants.forEach(assistant => this.assistants.set(assistant.name, assistant));
   }
 
   findAssistant(name: string): Assistant | undefined {
@@ -107,9 +109,9 @@ class AssistantManager {
               parts: [{ type: 'text' as const, text: request }],
             },
           }
-        )
+        );
       }).catch(error => {
-        console.error(`Error sending task: ${error}`);
+        console.error(`Error sending task to assistant ${assistant.url}: ${error}`);
         throw error;
       });
 
